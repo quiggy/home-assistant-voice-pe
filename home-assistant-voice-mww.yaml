@@ -1,4 +1,29 @@
 substitutions:
+  # ─────────────────────────────────────────
+  # DEVICE IDENTITY
+  # ─────────────────────────────────────────
+  device_name: home-assistant-voice
+  friendly_name: Home Assistant Voice
+
+  # ─────────────────────────────────────────
+  # WIFI / NETWORK
+  # ─────────────────────────────────────────
+  wifi_ssid: !secret wifi_ssid
+  wifi_password: !secret wifi_password
+
+  # ─────────────────────────────────────────
+  # WAKE WORD CONFIG
+  # ─────────────────────────────────────────
+  wake_word_name: hey_jarvis
+  wake_word_model_url: github://esphome/micro-wake-word-models/models/hey_jarvis.json@main
+
+  # ─────────────────────────────────────────
+  # WAKE WORD SENSITIVITY (probability cutoff)
+  # ─────────────────────────────────────────
+  wake_cutoff_slight: "250"     # ~0.98
+  wake_cutoff_moderate: "245"   # ~0.96
+  wake_cutoff_very: "222"       # ~0.87
+  
   # Phases of the Voice Assistant
   # The voice assistant is ready to be triggered by a wake word
   voice_assist_idle_phase_id: '1'
@@ -17,26 +42,26 @@ substitutions:
   # Change this to true in case you ahve a hidden SSID at home.
   hidden_ssid: "false"
   # Substitutions for audio files
-  jack_connected_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/jack_connected.flac
-  jack_disconnected_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/jack_disconnected.flac
-  mute_switch_on_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/mute_switch_on.flac
-  mute_switch_off_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/mute_switch_off.flac
-  timer_finished_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
-  wake_word_triggered_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/wake_word_triggered.flac
-  center_button_press_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/center_button_press.flac
-  center_button_double_press_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/center_button_double_press.flac
-  center_button_triple_press_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/center_button_triple_press.flac
-  center_button_long_press_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/center_button_long_press.flac
-  factory_reset_initiated_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/factory_reset_initiated.mp3
-  factory_reset_cancelled_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/factory_reset_cancelled.mp3
-  factory_reset_confirmed_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/factory_reset_confirmed.mp3
-  easter_egg_tick_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/easter_egg_tick.mp3
-  easter_egg_tada_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/easter_egg_tada.mp3
-  error_cloud_expired_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/error_cloud_expired.mp3
+  jack_connected_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/jack_connected.flac
+  jack_disconnected_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/jack_disconnected.flac
+  mute_switch_on_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/mute_switch_on.flac
+  mute_switch_off_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/mute_switch_off.flac
+  timer_finished_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/timer_finished.flac
+  wake_word_triggered_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/wake_word_triggered.flac
+  center_button_press_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/center_button_press.flac
+  center_button_double_press_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/center_button_double_press.flac
+  center_button_triple_press_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/center_button_triple_press.flac
+  center_button_long_press_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/center_button_long_press.flac
+  factory_reset_initiated_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/factory_reset_initiated.mp3
+  factory_reset_cancelled_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/factory_reset_cancelled.mp3
+  factory_reset_confirmed_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/factory_reset_confirmed.mp3
+  easter_egg_tick_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/easter_egg_tick.mp3
+  easter_egg_tada_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/easter_egg_tada.mp3
+  error_cloud_expired_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/26.3.0/sounds/error_cloud_expired.mp3
 
 esphome:
-  name: home-assistant-voice
-  friendly_name: Home Assistant Voice
+  name: ${device_name}
+  friendly_name: ${friendly_name}
   name_add_mac_suffix: true
   min_version: 2026.3.0
   on_boot:
@@ -82,8 +107,8 @@ esp32:
 
 wifi:
   id: wifi_id
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
   fast_connect: ${hidden_ssid}
   on_connect:
     - lambda: id(improv_ble_in_progress) = false;
@@ -191,6 +216,64 @@ globals:
     restore_value: no
     initial_value: 'false'
 
+
+  # -----------------------------
+  # Remote (device-local) timer
+  # -----------------------------
+  - id: remote_timer_total_seconds
+    type: int
+    restore_value: yes
+    initial_value: "0"
+
+  - id: remote_timer_remaining_seconds
+    type: int
+    restore_value: yes
+    initial_value: "0"
+
+  - id: remote_timer_running
+    type: bool
+    restore_value: yes
+    initial_value: "false"
+
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: return id(remote_timer_running);
+          then:
+            - lambda: |-
+                if (id(remote_timer_remaining_seconds) > 0) {
+                  id(remote_timer_remaining_seconds) -= 1;
+                }
+            - script.execute: control_leds
+            - if:
+                condition:
+                  lambda: return id(remote_timer_running) && (id(remote_timer_remaining_seconds) <= 0);
+                then:
+                  - lambda: |-
+                      id(remote_timer_running) = false;
+                  - switch.turn_on: timer_ringing
+                  - script.execute: control_leds
+
+number:
+  - platform: template
+    id: remote_timer_seconds
+    name: "VoicePE Remote Timer Seconds"
+    icon: mdi:timer
+    min_value: 0
+    max_value: 7200
+    step: 1
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: |-
+          int v = (int) x;
+          if (v < 0) v = 0;
+          id(remote_timer_total_seconds) = v;
+          id(remote_timer_remaining_seconds) = v;
+          id(control_leds).execute();
+
 switch:
   # This is the master mute switch. It is exposed to Home Assistant. The user can only turn it on and off if the hardware switch is off. (The hardware switch overrides the software one)
   - platform: template
@@ -237,8 +320,6 @@ switch:
     internal: true
     restore_mode: ALWAYS_OFF
     on_turn_off:
-      # Disable stop wake word
-      - micro_wake_word.disable_model: stop
       - script.execute: disable_repeat
       # Stop any current announcement (ie: stop the timer ring mid playback)
       - if:
@@ -262,8 +343,6 @@ switch:
           id: media_mixing_input
           decibel_reduction: 20
           duration: 0.0s
-      # Enable stop wake word
-      - micro_wake_word.enable_model: stop
       # Ring timer
       - script.execute: ring_timer
       # Refresh LED
@@ -565,6 +644,13 @@ binary_sensor:
       - lambda: id(jack_unplugged_recently) = false;
       - script.execute: control_leds
 
+
+  - platform: template
+    id: voicepe_remote_timer_running
+    name: "VoicePE Remote Timer Running"
+    device_class: running
+    lambda: |-
+      return id(remote_timer_running);
 light:
   # Hardware LED ring. Not used because remapping needed
   - platform: esp32_rmt_led_strip
@@ -861,6 +947,37 @@ light:
               it[10] = Color::BLACK;
             }
             id(global_led_animation_index) = (12 + id(global_led_animation_index) - 1) % 12;
+      - addressable_lambda:
+          name: "Remote Timer tick"
+          update_interval: 100ms
+          lambda: |-
+            auto light_color = id(led_ring).current_values;
+            Color color(light_color.get_red() * 255, light_color.get_green() * 255,
+                  light_color.get_blue() * 255);
+            Color muted_color(255, 0, 0);
+
+            float total = max((float) id(remote_timer_total_seconds), 1.0f);
+            float left = max((float) id(remote_timer_remaining_seconds), 0.0f);
+            float timer_ratio = 12.0f * left / total;
+
+            uint8_t last_led_on = static_cast<uint8_t>(ceil(timer_ratio)) - 1;
+            for (uint8_t i = 0; i < 12; i++) {
+              float brightness_dip = ( i == id(global_led_animation_index) % 12 && i != last_led_on ) ? 0.9f : 1.0f ;
+              if (i <= timer_ratio) {
+                it[i] = color * min(255.0f * brightness_dip * (timer_ratio - i) , 255.0f * brightness_dip) ;
+              } else {
+                it[i] = Color::BLACK;
+              }
+            }
+            if (id(master_mute_switch).state) {
+              it[2] = Color::BLACK;
+              it[3] = muted_color;
+              it[4] = Color::BLACK;
+              it[8] = Color::BLACK;
+              it[9] = muted_color;
+              it[10] = Color::BLACK;
+            }
+            id(global_led_animation_index) = (12 + id(global_led_animation_index) - 1) % 12;
       - addressable_rainbow:
           name: "Rainbow"
           width: 12
@@ -1024,6 +1141,16 @@ sensor:
                       id: control_hue
                       increase_hue: false
 
+
+  - platform: template
+    id: voicepe_remote_timer_remaining_seconds
+    name: "VoicePE Remote Timer Remaining Seconds"
+    icon: mdi:timer-sand
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: |-
+      return id(remote_timer_remaining_seconds);
 event:
   # Event entity exposed to the user to automate on complex center button presses.
   # The simple press is not exposed as it is used to control the device itself.
@@ -1069,6 +1196,8 @@ script:
             id(control_leds_dial_touched).execute();
           } else if (id(timer_ringing).state) {
             id(control_leds_timer_ringing).execute();
+          } else if (id(remote_timer_running)) {
+            id(control_leds_remote_timer_ticking).execute();
           } else if (id(voice_assistant_phase) == ${voice_assist_waiting_for_command_phase_id}) {
             id(control_leds_voice_assistant_waiting_for_command_phase).execute();
           } else if (id(voice_assistant_phase) == ${voice_assist_listening_for_command_phase_id}) {
@@ -1285,6 +1414,12 @@ script:
           effect: "Timer tick"
 
   # Script executed when the volume is increased/decreased from the dial
+
+  - id: control_leds_remote_timer_ticking
+    then:
+      - light.turn_on:
+          id: voice_assistant_leds
+          effect: "Remote Timer tick"
   - id: control_volume
     mode: restart
     parameters:
@@ -1479,29 +1614,10 @@ script:
   # Why is this wrapped on a script?
   #   Becasue we want to stop the sequence if the TTS step is faster than that.
   #   This allows us to prevent having the deactivation of the stop word before its own activation.
+  # Stop word disabled - v1 wake word model is incompatible with the stop model's feature step size
   - id: activate_stop_word_once
     then:
-      - wait_until:
-          condition:
-            media_player.is_announcing:
-              id: external_media_player
-          timeout: 5s
-      - delay: 1s
-      # Enable stop wake word
-      - if:
-          condition:
-            switch.is_off: timer_ringing
-          then:
-            - micro_wake_word.enable_model: stop
-            - wait_until:
-                not:
-                  media_player.is_announcing:
-                    id: external_media_player
-            - if:
-                condition:
-                  switch.is_off: timer_ringing
-                then:
-                  - micro_wake_word.disable_model: stop
+      - logger.log: "Stop word not available with v1 wake word model"
 
 i2s_audio:
   - id: i2s_output
@@ -1686,16 +1802,19 @@ voice_kit:
 # Sendspin related components are pinned to specific commits for reproducible builds
 external_components:
   - source:
-      type: local
-      path: custom_components
-    components: [micro_wake_word]
-  - source:
       type: git
       url: https://github.com/esphome/home-assistant-voice-pe
-      ref: dev
+      ref: 26.3.0
     components:
       - voice_kit
     refresh: 0s
+  - source:
+      # micro_wake_word from dev to fix tensor allocation bug on 2026.3.x
+      type: git
+      url: https://github.com/esphome/esphome
+      ref: dev
+    components: [micro_wake_word]
+    refresh: 1h
   - source:
       # https://github.com/esphome/esphome/pull/14933
       type: git
@@ -1723,17 +1842,9 @@ micro_wake_word:
     gain_factor: 4
   stop_after_detection: false
   models:
-    - model: models/okay_nabu.json
-      id: okay_nabu
-    - model: models/hey_jarvis.json
-      id: hey_jarvis
-    - model: models/hey_mycroft.json
-      id: hey_mycroft
-    - model: models/hey_luna.json
-      id: hey_luna
-    - model: models/stop.json
-      id: stop
-      internal: true
+    - model: ${wake_word_model_url}
+      id: ${wake_word_name}
+  vad:
   on_wake_word_detected:
     # If the wake word is detected when the device is muted (Possible with the software mute switch): Do nothing
     - if:
@@ -1796,17 +1907,11 @@ select:
       # These cutoffs apply only to the specific models included in the firmware: okay_nabu@20241226.3, hey_jarvis@v2, hey_mycroft@v2
       lambda: |-
         if (x == "Slightly sensitive") {
-          id(okay_nabu).set_probability_cutoff(217);    // 0.85 -> 0.000 FAPH on DipCo (Manifest's default)
-          id(hey_jarvis).set_probability_cutoff(247);   // 0.97 -> 0.563 FAPH on DipCo (Manifest's default)
-          id(hey_mycroft).set_probability_cutoff(253);  // 0.99 -> 0.567 FAPH on DipCo
+          id(${wake_word_name}).set_probability_cutoff(${wake_cutoff_slight});
         } else if (x == "Moderately sensitive") {
-          id(okay_nabu).set_probability_cutoff(176);    // 0.69 -> 0.376 FAPH on DipCo
-          id(hey_jarvis).set_probability_cutoff(235);   // 0.92 -> 0.939 FAPH on DipCo
-          id(hey_mycroft).set_probability_cutoff(242);  // 0.95 -> 1.502 FAPH on DipCo (Manifest's default)
+          id(${wake_word_name}).set_probability_cutoff(${wake_cutoff_moderate});
         } else if (x == "Very sensitive") {
-          id(okay_nabu).set_probability_cutoff(143);    // 0.56 -> 0.751 FAPH on DipCo
-          id(hey_jarvis).set_probability_cutoff(212);   // 0.83 -> 1.502 FAPH on DipCo
-          id(hey_mycroft).set_probability_cutoff(237);  // 0.93 -> 1.878 FAPH on DipCo
+          id(${wake_word_name}).set_probability_cutoff(${wake_cutoff_very});
         }
 
 voice_assistant:
@@ -1814,6 +1919,7 @@ voice_assistant:
   microphone:
     microphone: i2s_mics
     channels: 0
+  media_player: external_media_player
   micro_wake_word: mww
   use_wake_word: false
   noise_suppression_level: 0
@@ -1856,7 +1962,7 @@ voice_assistant:
         decibel_reduction: 20  # Number of dB quieter; higher implies more quiet, 0 implies full volume
         duration: 0.0s         # The duration of the transition (default is no transition)
   on_listening:
-    # Mute target player for better listening (only after wake word, not during idle streaming)
+    # Mute target player for better listening
     - homeassistant.action:
         action: script.voice_assistant_target_mute
         data:
@@ -1900,8 +2006,11 @@ voice_assistant:
           # Start a script that would potentially enable the stop word if the response is longer than a second
           - script.execute: activate_stop_word_once
   on_tts_end:
+    # Stop internal announcement immediately to prevent any audio leaking
+    - media_player.stop:
+        id: external_media_player
+        announcement: true
     # Pass the TTS URL and device identity to Home Assistant script for routing
-    # The script will determine which speaker to use based on the V:PE's name
     - homeassistant.action:
         action: script.voice_assistant_on_tts_end
         data:
@@ -1909,7 +2018,6 @@ voice_assistant:
           device_name: ${friendly_name}
   # When the voice assistant ends ...
   on_end:
-    # Wait for the voice assistant to fully stop before cleanup
     - wait_until:
         not:
           voice_assistant.is_running:
@@ -1959,5 +2067,29 @@ button:
     disabled_by_default: true
     icon: "mdi:restart"
 
+
+  - platform: template
+    id: voicepe_remote_timer_start
+    name: "VoicePE Remote Timer Start"
+    icon: mdi:play
+    on_press:
+      - lambda: |-
+          // Start/reset the device-local timer
+          id(remote_timer_remaining_seconds) = id(remote_timer_total_seconds);
+          id(remote_timer_running) = (id(remote_timer_remaining_seconds) > 0);
+      - switch.turn_off: timer_ringing
+      - script.execute: control_leds
+
+  - platform: template
+    id: voicepe_remote_timer_cancel
+    name: "VoicePE Remote Timer Cancel"
+    icon: mdi:stop
+    on_press:
+      - lambda: |-
+          id(remote_timer_running) = false;
+          id(remote_timer_total_seconds) = 0;
+          id(remote_timer_remaining_seconds) = 0;
+      - switch.turn_off: timer_ringing
+      - script.execute: control_leds
 debug:
   update_interval: 5s

@@ -1,0 +1,17 @@
+substitutions:
+  friendly_name: Voice PE Wohnzimmer
+
+packages:
+  home-assistant-voice: !include home-assistant-voice.yaml
+
+esphome:
+  name: ha-voice-0abfdc
+  friendly_name: ${friendly_name}
+
+api:
+  encryption:
+    key: s8FjsWAM3H8vY8RRPVwRnehclcdnhwh2ISP2wzyq0OU=
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
