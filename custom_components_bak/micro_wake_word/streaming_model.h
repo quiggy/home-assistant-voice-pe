@@ -63,6 +63,9 @@ class StreamingModel {
   /// @brief Allocates tensor and variable arenas and sets up the model interpreter
   /// @return True if successful, false otherwise
   bool load_model_();
+  /// @brief Probes the actual required tensor arena size by trial allocation.
+  /// @return The required arena size rounded up to 16-byte alignment, or 0 on failure.
+  size_t probe_arena_size_();
   /// @brief Returns true if successfully registered the streaming model's TensorFlow operations
   bool register_streaming_ops_(tflite::MicroMutableOpResolver<20> &op_resolver);
 
@@ -70,6 +73,7 @@ class StreamingModel {
 
   bool loaded_{false};
   bool enabled_{true};
+  bool tensor_arena_size_probed_{false};
   bool unprocessed_probability_status_{false};
   uint8_t current_stride_step_{0};
   int16_t ignore_windows_{-MIN_SLICES_BEFORE_DETECTION};
@@ -80,6 +84,7 @@ class StreamingModel {
 
   size_t last_n_index_{0};
   size_t tensor_arena_size_;
+  bool use_internal_ram_{false};  // If true, allocate tensor arena in internal SRAM instead of SPIRAM
   std::vector<uint8_t> recent_streaming_probabilities_;
 
   const uint8_t *model_start_;
@@ -104,7 +109,7 @@ class WakeWordModel final : public StreamingModel {
   /// @param internal_only (bool) If true, the model will not be exposed to HomeAssistant as an available model
   WakeWordModel(const std::string &id, const uint8_t *model_start, uint8_t default_probability_cutoff,
                 size_t sliding_window_average_size, const std::string &wake_word, size_t tensor_arena_size,
-                bool default_enabled, bool internal_only);
+                bool default_enabled, bool internal_only, bool use_internal_ram = false);
 
   void log_model_config() override;
 

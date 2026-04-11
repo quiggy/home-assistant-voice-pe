@@ -29,14 +29,6 @@ void VADModel::log_model_config() {
 bool StreamingModel::load_model_() {
   RAMAllocator<uint8_t> arena_allocator;
 
-  if (this->tensor_arena_ == nullptr) {
-    this->tensor_arena_ = arena_allocator.allocate(this->tensor_arena_size_);
-    if (this->tensor_arena_ == nullptr) {
-      ESP_LOGE(TAG, "Could not allocate the streaming model's tensor arena.");
-      return false;
-    }
-  }
-
   if (this->var_arena_ == nullptr) {
     this->var_arena_ = arena_allocator.allocate(STREAMING_MODEL_VARIABLE_ARENA_SIZE);
     if (this->var_arena_ == nullptr) {
@@ -44,13 +36,43 @@ bool StreamingModel::load_model_() {
       return false;
     }
     this->ma_ = tflite::MicroAllocator::Create(this->var_arena_, STREAMING_MODEL_VARIABLE_ARENA_SIZE);
+    if (this->ma_ == nullptr) {
+      ESP_LOGE(TAG, "Failed to create MicroAllocator (var_arena=%u)", STREAMING_MODEL_VARIABLE_ARENA_SIZE);
+      return false;
+    }
     this->mrv_ = tflite::MicroResourceVariables::Create(this->ma_, 20);
+    if (this->mrv_ == nullptr) {
+      ESP_LOGE(TAG, "Failed to create MicroResourceVariables");
+      return false;
+    }
+    ESP_LOGI(TAG, "Variable arena: size=%u allocator=%p mrv=%p", STREAMING_MODEL_VARIABLE_ARENA_SIZE,
+             (void*)this->ma_, (void*)this->mrv_);
   }
 
   const tflite::Model *model = tflite::GetModel(this->model_start_);
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     ESP_LOGE(TAG, "Streaming model's schema is not supported");
     return false;
+  }
+
+  // Probe for the actual required tensor arena size if not yet determined
+  if (!this->tensor_arena_size_probed_) {
+    size_t probed_size = this->probe_arena_size_();
+    if (probed_size > 0) {
+      ESP_LOGD(TAG, "Probed tensor arena size: %zu bytes", probed_size);
+      this->tensor_arena_size_ = probed_size;
+    } else {
+      ESP_LOGW(TAG, "Arena size probe failed, using manifest size: %zu bytes", this->tensor_arena_size_);
+    }
+    this->tensor_arena_size_probed_ = true;
+  }
+
+  if (this->tensor_arena_ == nullptr) {
+    this->tensor_arena_ = arena_allocator.allocate(this->tensor_arena_size_);
+    if (this->tensor_arena_ == nullptr) {
+      ESP_LOGE(TAG, "Could not allocate the streaming model's tensor arena.");
+      return false;
+    }
   }
 
   if (this->interpreter_ == nullptr) {
@@ -60,6 +82,21 @@ bool StreamingModel::load_model_() {
     if (this->interpreter_->AllocateTensors() != kTfLiteOk) {
       ESP_LOGE(TAG, "Failed to allocate tensors for the streaming model");
       return false;
+    }
+
+    ESP_LOGI(TAG, "Model arena: configured=%u used=%u outputs=%u stride=%u",
+             this->tensor_arena_size_, this->interpreter_->arena_used_bytes(),
+             this->interpreter_->outputs_size(),
+             this->interpreter_->input(0)->dims->data[1]);
+
+    // Log quantization parameters for input and output tensors
+    {
+      TfLiteTensor *inp = this->interpreter_->input(0);
+      TfLiteTensor *outp = this->interpreter_->output(0);
+      ESP_LOGI(TAG, "Input  quant: scale=%.6f zero_point=%d type=%d",
+               inp->params.scale, inp->params.zero_point, inp->type);
+      ESP_LOGI(TAG, "Output quant: scale=%.6f zero_point=%d type=%d",
+               outp->params.scale, outp->params.zero_point, outp->type);
     }
 
     // Verify input tensor matches expected values
@@ -92,6 +129,62 @@ bool StreamingModel::load_model_() {
   this->loaded_ = true;
   this->reset_probabilities();
   return true;
+}
+
+size_t StreamingModel::probe_arena_size_() {
+  RAMAllocator<uint8_t> arena_allocator;
+
+  // Try manifest size first, then 1.5x, then 2x if it fails.
+  size_t attempt_sizes[] = {(this->tensor_arena_size_ + 15) & ~15, (this->tensor_arena_size_ * 3 / 2 + 15) & ~15,
+                            (this->tensor_arena_size_ * 2 + 15) & ~15};
+
+  for (size_t attempt_size : attempt_sizes) {
+    uint8_t *probe_arena = arena_allocator.allocate(attempt_size);
+    if (probe_arena == nullptr) {
+      continue;
+    }
+
+    auto probe_interpreter = make_unique<tflite::MicroInterpreter>(
+        tflite::GetModel(this->model_start_), this->streaming_op_resolver_, probe_arena, attempt_size, this->mrv_);
+
+    if (probe_interpreter->AllocateTensors() != kTfLiteOk) {
+      probe_interpreter.reset();
+      arena_allocator.deallocate(probe_arena, attempt_size);
+      this->ma_ = tflite::MicroAllocator::Create(this->var_arena_, STREAMING_MODEL_VARIABLE_ARENA_SIZE);
+      this->mrv_ = tflite::MicroResourceVariables::Create(this->ma_, 20);
+      continue;
+    }
+
+    size_t lower = (probe_interpreter->arena_used_bytes() + 16 + 15) & ~15;
+    probe_interpreter.reset();
+    this->ma_ = tflite::MicroAllocator::Create(this->var_arena_, STREAMING_MODEL_VARIABLE_ARENA_SIZE);
+    this->mrv_ = tflite::MicroResourceVariables::Create(this->ma_, 20);
+
+    size_t upper = attempt_size;
+
+    while (lower < upper) {
+      auto test_interpreter = make_unique<tflite::MicroInterpreter>(
+          tflite::GetModel(this->model_start_), this->streaming_op_resolver_, probe_arena, lower, this->mrv_);
+
+      bool ok = test_interpreter->AllocateTensors() == kTfLiteOk;
+
+      test_interpreter.reset();
+      this->ma_ = tflite::MicroAllocator::Create(this->var_arena_, STREAMING_MODEL_VARIABLE_ARENA_SIZE);
+      this->mrv_ = tflite::MicroResourceVariables::Create(this->ma_, 20);
+
+      if (ok) {
+        upper = lower + 16;
+        break;
+      }
+
+      lower = ((lower + upper) / 2 + 15) & ~15;
+    }
+
+    arena_allocator.deallocate(probe_arena, attempt_size);
+    return upper;
+  }
+
+  return 0;
 }
 
 void StreamingModel::unload_model() {
@@ -146,6 +239,14 @@ bool StreamingModel::perform_streaming_inference(const int8_t features[PREPROCES
 
       TfLiteTensor *output = this->interpreter_->output(0);
 
+      // Debug: log all output tensor values
+      if (this->interpreter_->outputs_size() > 1) {
+        TfLiteTensor *out1 = this->interpreter_->output(1);
+        ESP_LOGD(TAG, "Inference out[0]=%u out[1]=%u (outputs=%u)",
+                 output->data.uint8[0], out1->data.uint8[0],
+                 this->interpreter_->outputs_size());
+      }
+
       ++this->last_n_index_;
       if (this->last_n_index_ == this->sliding_window_size_)
         this->last_n_index_ = 0;
@@ -170,7 +271,7 @@ void StreamingModel::reset_probabilities() {
 
 WakeWordModel::WakeWordModel(const std::string &id, const uint8_t *model_start, uint8_t default_probability_cutoff,
                              size_t sliding_window_average_size, const std::string &wake_word, size_t tensor_arena_size,
-                             bool default_enabled, bool internal_only) {
+                             bool default_enabled, bool internal_only, bool use_internal_ram) {
   this->id_ = id;
   this->model_start_ = model_start;
   this->default_probability_cutoff_ = default_probability_cutoff;
@@ -179,6 +280,7 @@ WakeWordModel::WakeWordModel(const std::string &id, const uint8_t *model_start, 
   this->recent_streaming_probabilities_.resize(sliding_window_average_size, 0);
   this->wake_word_ = wake_word;
   this->tensor_arena_size_ = tensor_arena_size;
+  this->use_internal_ram_ = use_internal_ram;
   this->register_streaming_ops_(this->streaming_op_resolver_);
   this->current_stride_step_ = 0;
   this->internal_only_ = internal_only;
@@ -262,6 +364,12 @@ DetectionEvent VADModel::determine_detected() {
 
   detection_event.average_probability = sum / this->sliding_window_size_;
   detection_event.detected = sum > (this->probability_cutoff_ * this->sliding_window_size_);
+
+  if (detection_event.max_probability > 0) {
+    ESP_LOGD(TAG, "VAD: max=%u avg=%u cutoff=%u detected=%s",
+             detection_event.max_probability, detection_event.average_probability,
+             this->probability_cutoff_, detection_event.detected ? "yes" : "no");
+  }
 
   return detection_event;
 }

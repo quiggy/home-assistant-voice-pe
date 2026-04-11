@@ -7,6 +7,9 @@ packages:
 esphome:
   name: ha-voice-0abfdc
   friendly_name: ${friendly_name}
+  platformio_options:
+    extra_scripts:
+      - pre:../../../patch_esp_nn_fc.py
 
 api:
   encryption:

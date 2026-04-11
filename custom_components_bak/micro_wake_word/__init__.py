@@ -44,6 +44,7 @@ CONF_SLIDING_WINDOW_AVERAGE_SIZE = "sliding_window_average_size"
 CONF_SLIDING_WINDOW_SIZE = "sliding_window_size"
 CONF_STOP_AFTER_DETECTION = "stop_after_detection"
 CONF_TENSOR_ARENA_SIZE = "tensor_arena_size"
+CONF_USE_INTERNAL_RAM = "use_internal_ram"
 CONF_VAD = "vad"
 
 TYPE_HTTP = "http"
@@ -150,6 +151,7 @@ MANIFEST_SCHEMA_V2 = cv.Schema(
                 cv.Required(CONF_TENSOR_ARENA_SIZE): cv.int_,
                 cv.Required(CONF_PROBABILITY_CUTOFF): cv.float_,
                 cv.Required(CONF_SLIDING_WINDOW_SIZE): cv.positive_int,
+                cv.Optional(CONF_USE_INTERNAL_RAM, default=False): cv.boolean,
                 cv.Required(KEY_MINIMUM_ESPHOME_VERSION): cv.All(
                     cv.version_number, cv.validate_esphome_version
                 ),
@@ -498,6 +500,8 @@ async def to_code(config):
         else:
             # Only enable the first wake word by default. After first boot, the enable state is saved/loaded to the flash
             default_enabled = i == 0
+            use_internal_ram = manifest[KEY_MICRO].get(CONF_USE_INTERNAL_RAM, False)
+
             wake_word_model = cg.new_Pvariable(
                 model_parameters[CONF_ID],
                 str(model_parameters[CONF_ID]),
@@ -508,6 +512,7 @@ async def to_code(config):
                 manifest[KEY_MICRO][CONF_TENSOR_ARENA_SIZE],
                 default_enabled,
                 model_parameters[CONF_INTERNAL],
+                use_internal_ram,
             )
 
             for lang in manifest[KEY_TRAINED_LANGUAGES]:
