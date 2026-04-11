@@ -36,12 +36,8 @@ def patch_source_file(filepath):
         return False
 
     patched = re.sub(
-        r"(case kTfLiteInt8:\s*\{\s*\n)\s*#if ESP_NN\b",
-        r"\g<1>"
-        + f"#if 0  {MARKER}\n"
-        + "          // ESP-NN esp_nn_fully_connected_s8() produces wrong results for VAD model.\n"
-        + "          // Forcing reference implementation. See ESP-NN-FC-BUG.md\n"
-        + "#elif ESP_NN",
+        r"(#if) ESP_NN\b([ \t]*\n(?: *//[^\n]*\n)* *(?:const RuntimeShape& filter_shape))",
+        r"\g<1> 0  " + MARKER + r"\g<2>",
         content,
         count=1,
     )
@@ -56,6 +52,21 @@ def patch_source_file(filepath):
     return True
 
 
+def invalidate_object_cache(source_path, project_dir):
+    """Delete the cached .o if it's older than the source, forcing PlatformIO to recompile."""
+    # .o lives under .pioenvs/<env>/ mirroring the source tree relative to project_dir
+    rel = os.path.relpath(source_path, project_dir)
+    pioenvs = os.path.join(project_dir, ".pioenvs")
+    if not os.path.isdir(pioenvs):
+        return
+    for env_dir in os.listdir(pioenvs):
+        obj_path = os.path.join(pioenvs, env_dir, rel + ".o")
+        if os.path.isfile(obj_path):
+            if os.path.getmtime(obj_path) < os.path.getmtime(source_path):
+                os.remove(obj_path)
+                print(f"[patch-esp-nn-fc] Deleted stale object: {obj_path}")
+
+
 def patch_if_exists(project_dir):
     """Try to patch managed_components source directly (works for incremental builds)."""
     pattern = os.path.join(
@@ -64,6 +75,7 @@ def patch_if_exists(project_dir):
     )
     for filepath in glob.glob(pattern):
         patch_source_file(filepath)
+        invalidate_object_cache(filepath, project_dir)
 
 
 def inject_cmake_include(project_dir):
@@ -73,6 +85,10 @@ def inject_cmake_include(project_dir):
 
     if not os.path.isfile(cmake_patch):
         print(f"[patch-esp-nn-fc] WARNING: {cmake_patch} not found, skipping cmake injection")
+        return
+
+    if not os.path.isfile(cmake_lists):
+        print(f"[patch-esp-nn-fc] WARNING: {cmake_lists} not found yet, skipping cmake injection")
         return
 
     with open(cmake_lists, "r") as f:

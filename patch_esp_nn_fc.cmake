@@ -17,11 +17,11 @@ if(EXISTS "${_fc_file}")
     # Already patched?
     string(FIND "${_fc_content}" "[PATCHED]" _patched_pos)
     if(_patched_pos EQUAL -1)
-        # Replace '#if ESP_NN' with '#if 0 ... #elif ESP_NN' in the kTfLiteInt8 case.
-        # The pattern: 'case kTfLiteInt8: {\n#if ESP_NN'
+        # Replace '#if ESP_NN' with '#if 0  // [PATCHED]' in the kTfLiteInt8 case.
+        # This disables the ESP-NN optimized path; the #else reference implementation is used instead.
         string(REGEX REPLACE
-            "(case kTfLiteInt8:[^\n]*\\{)\n#if ESP_NN"
-            "\\1\n#if 0  // [PATCHED] ESP-NN FC disabled for VAD compatibility\n          // ESP-NN esp_nn_fully_connected_s8() produces wrong results for VAD model.\n          // Forcing reference implementation. See ESP-NN-FC-BUG.md\n#elif ESP_NN"
+            "#if ESP_NN([ \t]*\n)"
+            "#if 0  // [PATCHED] ESP-NN FC disabled for VAD compatibility\\1"
             _fc_patched
             "${_fc_content}"
         )

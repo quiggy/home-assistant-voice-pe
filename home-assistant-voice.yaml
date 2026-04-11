@@ -1685,10 +1685,6 @@ voice_kit:
 
 # Sendspin related components are pinned to specific commits for reproducible builds
 external_components:
-#  - source:
-#      type: local
-#      path: custom_components
-#    components: [micro_wake_word]
   - source:
       type: git
       url: https://github.com/esphome/home-assistant-voice-pe
@@ -1723,8 +1719,6 @@ micro_wake_word:
     gain_factor: 4
   stop_after_detection: false
   models:
-    - model: models/okay_nabu.json
-      id: okay_nabu
     - model: models/hey_luna.json
       id: hey_luna
     - model: models/stop.json
@@ -1791,16 +1785,13 @@ select:
       # Sets specific wake word probabilities computed for each particular model
       # Note probability cutoffs are set as a quantized uint8 value, each comment has the corresponding floating point cutoff
       # False Accepts per Hour values are tested against all units and channels from the Dinner Party Corpus.
-      # These cutoffs apply only to the specific models included in the firmware: okay_nabu@20241226.3, hey_luna
+      # These cutoffs apply only to the specific models included in the firmware: hey_luna
       lambda: |-
         if (x == "Slightly sensitive") {
-          id(okay_nabu).set_probability_cutoff(217);    // 0.85 -> 0.000 FAPH on DipCo (Manifest's default)
           id(hey_luna).set_probability_cutoff(248);     // 0.97
         } else if (x == "Moderately sensitive") {
-          id(okay_nabu).set_probability_cutoff(176);    // 0.69 -> 0.376 FAPH on DipCo
           id(hey_luna).set_probability_cutoff(235);     // 0.92
         } else if (x == "Very sensitive") {
-          id(okay_nabu).set_probability_cutoff(143);    // 0.56 -> 0.751 FAPH on DipCo
           id(hey_luna).set_probability_cutoff(212);     // 0.83
         }
 
