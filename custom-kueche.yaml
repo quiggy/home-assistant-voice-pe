@@ -1,0 +1,20 @@
+substitutions:
+  friendly_name: Voice PE Küche
+
+packages:
+  home-assistant-voice: !include home-assistant-voice.yaml
+
+esphome:
+  name: ha-voice-0abef9
+  friendly_name: ${friendly_name}
+  platformio_options:
+    extra_scripts:
+      - pre:../../../patch_esp_nn_fc.py
+
+api:
+  encryption:
+    key: y1SCoMBjsxRn6X3VRcgN1FO8xZu/fmywaEuUtEErUOI=
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
