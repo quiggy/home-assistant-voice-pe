@@ -86,21 +86,51 @@ This forces the reference implementation for all int8 FullyConnected ops. The pe
 
 ## How to Make the Fix Persistent
 
-The patch is applied automatically via a PlatformIO pre-build script:
+The patch is applied automatically via two cooperating scripts, ensuring it works on both clean and incremental builds:
 
-1. **`patch_esp_nn_fc.py`** in the project root patches `fully_connected.cc` before compilation
-2. **`custom.yaml`** references it via `platformio_options: extra_scripts: pre:../../../patch_esp_nn_fc.py`
+### Two-File Patching Strategy
 
-### Clean Build Caveat
+| File | Type | Role |
+|------|------|------|
+| `patch_esp_nn_fc.py` | PlatformIO pre-build script | Patches source directly (if exists) + injects cmake include into `CMakeLists.txt` |
+| `patch_esp_nn_fc.cmake` | CMake script | Runs after `project()` downloads `managed_components` — handles first clean build |
 
-On a fully clean build (no `.esphome/build/` directory), the first compile runs before `managed_components` are downloaded, so the patch cannot be applied. On the second compile (incremental), the script patches the file and CMake/ninja recompiles just that one file (~25s). Clean builds are rare in practice.
+Each device YAML references the pre-script:
+
+```yaml
+esphome:
+  platformio_options:
+    extra_scripts:
+      - pre:../../../patch_esp_nn_fc.py
+```
+
+### How It Works
+
+**Incremental build** (common case):
+1. PlatformIO runs `patch_esp_nn_fc.py` before compilation
+2. `managed_components/` already exists → source patched directly
+3. Also injects cmake include as a safety net
+4. Build proceeds with patched code (~20s)
+
+**Clean build** (no `managed_components/` yet):
+1. PlatformIO runs `patch_esp_nn_fc.py` — source doesn't exist yet, skips direct patching
+2. Injects `include("/config/patch_esp_nn_fc.cmake")` into `CMakeLists.txt`
+3. CMake runs `project()` → ESP-IDF component manager downloads `managed_components/`
+4. CMake then processes our included script → patches the freshly downloaded source
+5. ninja compiles the patched code
+
+This ensures the patch applies in a single pass for both clean and incremental builds.
 
 ### Upgrading ESPHome
 
-Once ESPHome upgrades its esp-tflite-micro dependency from v1.3.3.1 to >= v1.3.4, this patch is no longer needed and both the script and `extra_scripts` reference can be removed.
+Once ESPHome upgrades its esp-tflite-micro dependency from v1.3.3.1 to >= v1.3.4, this patch is no longer needed. To remove:
+1. Delete `patch_esp_nn_fc.py` and `patch_esp_nn_fc.cmake`
+2. Remove the `platformio_options` block from each device YAML
 
 ## Files
 
 - **Bug location**: `managed_components/espressif__esp-tflite-micro/tensorflow/lite/micro/kernels/esp_nn/fully_connected.cc`
+- **Patch scripts**: `patch_esp_nn_fc.py` (PlatformIO pre-script), `patch_esp_nn_fc.cmake` (CMake include)
 - **VAD model**: `models/vad.tflite` (34328 bytes, MD5 `dcefed8d71eb1107cc6dc2e8d042ba83`)
-- **Build directories**: `.esphome/build/ha-voice-0abfdc/` (custom.yaml), `.esphome/build/home-assistant-voice/` (home-assistant-voice.yaml)
+- **Device configs**: `custom.yaml` (Wohnzimmer), `custom-arbeitszimmer.yaml` (Arbeitszimmer)
+- **Build directories**: `.esphome/build/ha-voice-0abfdc/`, `.esphome/build/ha-voice-099f06/`
