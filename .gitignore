@@ -141,5 +141,4 @@ sdkconfig.*
 
 # Local customizations
 secrets.yaml
-claude.md
 .venv-*/

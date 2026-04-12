@@ -1861,6 +1861,16 @@ voice_assistant:
         action: script.voice_assistant_target_unmute
         data:
           device_name: ${friendly_name}
+  on_stt_end:
+    # If the user said "stop" (or similar), abort the pipeline before intent processing
+    - if:
+        condition:
+          lambda: |-
+            std::string text = x;
+            for (auto &c : text) c = tolower(c);
+            return text == "stop" || text == "stop." || text == "stopp" || text == "stopp.";
+        then:
+          - voice_assistant.stop:
   on_intent_progress:
     - if:
         condition:
