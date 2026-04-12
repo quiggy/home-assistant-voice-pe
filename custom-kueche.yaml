@@ -1,5 +1,5 @@
 substitutions:
-  friendly_name: Voice PE Küche
+  friendly_name: Voice PE Kueche
 
 packages:
   home-assistant-voice: !include home-assistant-voice.yaml

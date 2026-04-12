@@ -1721,6 +1721,7 @@ micro_wake_word:
   models:
     - model: models/hey_luna.json
       id: hey_luna
+      sliding_window_size: 10
     - model: models/stop.json
       id: stop
       internal: true
@@ -1788,11 +1789,11 @@ select:
       # These cutoffs apply only to the specific models included in the firmware: hey_luna
       lambda: |-
         if (x == "Slightly sensitive") {
-          id(hey_luna).set_probability_cutoff(248);     // 0.97
+          id(hey_luna).set_probability_cutoff(252);     // 0.988
         } else if (x == "Moderately sensitive") {
-          id(hey_luna).set_probability_cutoff(235);     // 0.92
+          id(hey_luna).set_probability_cutoff(245);     // 0.96
         } else if (x == "Very sensitive") {
-          id(hey_luna).set_probability_cutoff(212);     // 0.83
+          id(hey_luna).set_probability_cutoff(230);     // 0.90
         }
 
 voice_assistant:

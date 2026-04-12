@@ -79,28 +79,48 @@ def patch_if_exists(project_dir):
 
 
 def inject_cmake_include(project_dir):
-    """Append include(patch_esp_nn_fc.cmake) to CMakeLists.txt for first-build patching."""
-    cmake_lists = os.path.join(project_dir, "CMakeLists.txt")
+    """Ensure patch_esp_nn_fc.cmake runs during cmake configure (after managed_components download).
+
+    Method 1: Append include() to CMakeLists.txt (works on incremental builds).
+    Method 2: Set CMAKE_PROJECT_INCLUDE via board_build.cmake_extra_args (works on clean builds
+              where CMakeLists.txt doesn't exist yet when this pre-script runs).
+    """
     cmake_patch = os.path.abspath(os.path.join(project_dir, "..", "..", "..", CMAKE_SCRIPT))
 
     if not os.path.isfile(cmake_patch):
         print(f"[patch-esp-nn-fc] WARNING: {cmake_patch} not found, skipping cmake injection")
         return
 
-    if not os.path.isfile(cmake_lists):
-        print(f"[patch-esp-nn-fc] WARNING: {cmake_lists} not found yet, skipping cmake injection")
-        return
+    cmake_lists = os.path.join(project_dir, "CMakeLists.txt")
 
-    with open(cmake_lists, "r") as f:
-        content = f.read()
+    if os.path.isfile(cmake_lists):
+        # Method 1: CMakeLists.txt exists (incremental build) — inject include directly
+        with open(cmake_lists, "r") as f:
+            content = f.read()
 
-    if CMAKE_SCRIPT in content:
-        return  # already injected (shouldn't happen since ESPHome regenerates, but safe)
+        if CMAKE_SCRIPT in content:
+            return  # already injected
 
-    with open(cmake_lists, "a") as f:
-        f.write(f'\n# ESP-NN FC patch — injected by patch_esp_nn_fc.py\n')
-        f.write(f'include("{cmake_patch}")\n')
-    print(f"[patch-esp-nn-fc] Injected cmake include: {cmake_patch}")
+        with open(cmake_lists, "a") as f:
+            f.write(f'\n# ESP-NN FC patch — injected by patch_esp_nn_fc.py\n')
+            f.write(f'include("{cmake_patch}")\n')
+        print(f"[patch-esp-nn-fc] Injected cmake include into CMakeLists.txt")
+    else:
+        # Method 2: Clean build — CMakeLists.txt doesn't exist yet.
+        # Use CMAKE_PROJECT_INCLUDE so cmake runs our patch after project() downloads
+        # managed_components.  Passed via board_build.cmake_extra_args.
+        cmake_arg = f"-DCMAKE_PROJECT_INCLUDE={cmake_patch}"
+        try:
+            existing = env.GetProjectOption("board_build.cmake_extra_args", [])
+            if isinstance(existing, str):
+                existing = [existing] if existing else []
+            if cmake_arg not in existing:
+                existing.append(cmake_arg)
+                env.SetProjectOption("board_build.cmake_extra_args", existing)
+                print(f"[patch-esp-nn-fc] Set CMAKE_PROJECT_INCLUDE via cmake_extra_args (clean build)")
+        except Exception as e:
+            print(f"[patch-esp-nn-fc] WARNING: Could not set cmake_extra_args: {e}")
+            print(f"[patch-esp-nn-fc] Run compile again — incremental build will apply the patch")
 
 
 project_dir = env.subst("$PROJECT_DIR")
