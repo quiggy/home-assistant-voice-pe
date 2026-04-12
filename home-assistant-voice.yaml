@@ -1716,12 +1716,12 @@ micro_wake_word:
   microphone:
     microphone: i2s_mics
     channels: 1
-    gain_factor: 4
+    gain_factor: 6
   stop_after_detection: false
   models:
     - model: models/hey_luna.json
       id: hey_luna
-      sliding_window_size: 10
+      sliding_window_size: 15
     - model: models/stop.json
       id: stop
       internal: true
