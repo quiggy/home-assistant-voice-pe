@@ -327,6 +327,10 @@ binary_sensor:
                           condition:
                             voice_assistant.is_running:
                           then:
+                            - homeassistant.action:
+                                action: script.voice_assistant_stop_target
+                                data:
+                                  device_name: ${friendly_name}
                             - voice_assistant.stop:
                           else:
                             - if:
