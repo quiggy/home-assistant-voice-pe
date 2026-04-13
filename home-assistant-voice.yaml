@@ -115,6 +115,11 @@ api:
     - script.execute: control_leds
   encryption:
     key: !secret api_encryption_key
+  actions:
+    - action: tts_finished
+      then:
+        - lambda: id(tts_playing_on_target) = false;
+        - script.stop: clear_tts_playing_flag
 
 ota:
   - platform: esphome
@@ -169,6 +174,11 @@ globals:
     initial_value: 'false'
   # Global variable tracking if the user said "stop" during STT
   - id: stop_command_detected
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  # Global variable tracking if TTS was recently sent to the target speaker (Sonos)
+  - id: tts_playing_on_target
     type: bool
     restore_value: no
     initial_value: 'false'
@@ -325,43 +335,58 @@ binary_sensor:
                     else:
                       - if:
                           condition:
-                            voice_assistant.is_running:
+                            lambda: return id(tts_playing_on_target);
                           then:
+                            - lambda: id(tts_playing_on_target) = false;
                             - homeassistant.action:
                                 action: script.voice_assistant_stop_target
                                 data:
                                   device_name: ${friendly_name}
-                            - voice_assistant.stop:
+                            - if:
+                                condition:
+                                  voice_assistant.is_running:
+                                then:
+                                  - voice_assistant.stop:
                           else:
                             - if:
                                 condition:
-                                  media_player.is_announcing:
-                                    id: external_media_player
+                                  voice_assistant.is_running:
                                 then:
-                                  media_player.stop:
-                                    announcement: true
-                                    id: external_media_player
+                                  - homeassistant.action:
+                                      action: script.voice_assistant_stop_target
+                                      data:
+                                        device_name: ${friendly_name}
+                                  - voice_assistant.stop:
                                 else:
                                   - if:
                                       condition:
-                                        media_player.is_playing:
+                                        media_player.is_announcing:
                                           id: external_media_player
                                       then:
-                                        - media_player.pause:
+                                        - media_player.stop:
+                                            announcement: true
                                             id: external_media_player
                                       else:
                                         - if:
                                             condition:
-                                              and:
-                                                - switch.is_off: master_mute_switch
-                                                - not: voice_assistant.is_running
+                                              media_player.is_playing:
+                                                id: external_media_player
                                             then:
-                                              - script.execute:
-                                                  id: play_sound
-                                                  priority: true
-                                                  sound_file: "center_button_press_sound"
-                                              - delay: 300ms
-                                              - voice_assistant.start:
+                                              - media_player.pause:
+                                                  id: external_media_player
+                                            else:
+                                              - if:
+                                                  condition:
+                                                    and:
+                                                      - switch.is_off: master_mute_switch
+                                                      - not: voice_assistant.is_running
+                                                  then:
+                                                    - script.execute:
+                                                        id: play_sound
+                                                        priority: true
+                                                        sound_file: "center_button_press_sound"
+                                                    - delay: 300ms
+                                                    - voice_assistant.start:
       # Double Click
       #  . Exposed as an event entity. To be used in automations inside Home Assistant
       - timing:
@@ -1512,6 +1537,13 @@ script:
                 then:
                   - micro_wake_word.disable_model: stop
 
+  # Clear the tts_playing_on_target flag after a timeout
+  - id: clear_tts_playing_flag
+    mode: restart
+    then:
+      - delay: 30s
+      - lambda: id(tts_playing_on_target) = false;
+
 i2s_audio:
   - id: i2s_output
     # i2s_output data pin is gpio10
@@ -1759,29 +1791,39 @@ micro_wake_word:
                           data:
                             device_name: ${friendly_name}
                       - voice_assistant.stop:
-                    # Stop any other media player announcement
                     else:
                       - if:
                           condition:
-                            media_player.is_announcing:
-                              id: external_media_player
+                            lambda: return id(tts_playing_on_target);
                           then:
-                            - media_player.stop:
-                                announcement: true
-                                id: external_media_player
-                          # Start the voice assistant and play the wake sound, if enabled
+                            - lambda: id(tts_playing_on_target) = false;
+                            - homeassistant.action:
+                                action: script.voice_assistant_stop_target
+                                data:
+                                  device_name: ${friendly_name}
+                          # Stop any other media player announcement
                           else:
                             - if:
                                 condition:
-                                  switch.is_on: wake_sound
+                                  media_player.is_announcing:
+                                    id: external_media_player
                                 then:
-                                  - script.execute:
-                                      id: play_sound
-                                      priority: true
-                                      sound_file: "wake_word_triggered_sound"
-                                  - delay: 300ms
-                            - voice_assistant.start:
-                                wake_word: !lambda return wake_word;
+                                  - media_player.stop:
+                                      announcement: true
+                                      id: external_media_player
+                                # Start the voice assistant and play the wake sound, if enabled
+                                else:
+                                  - if:
+                                      condition:
+                                        switch.is_on: wake_sound
+                                      then:
+                                        - script.execute:
+                                            id: play_sound
+                                            priority: true
+                                            sound_file: "wake_word_triggered_sound"
+                                        - delay: 300ms
+                                  - voice_assistant.start:
+                                      wake_word: !lambda return wake_word;
 
 select:
   - platform: template
@@ -1856,7 +1898,9 @@ voice_assistant:
         decibel_reduction: 20  # Number of dB quieter; higher implies more quiet, 0 implies full volume
         duration: 0.0s         # The duration of the transition (default is no transition)
   on_listening:
-    - lambda: id(stop_command_detected) = false;
+    - lambda: |-
+        id(stop_command_detected) = false;
+        id(tts_playing_on_target) = false;
     # Mute target player for better listening (only after wake word, not during idle streaming)
     - homeassistant.action:
         action: script.voice_assistant_target_mute
@@ -1930,6 +1974,8 @@ voice_assistant:
           - voice_assistant.stop:
     # Pass the TTS URL and device identity to Home Assistant script for routing
     # The script will determine which speaker to use based on the V:PE's name
+    - lambda: id(tts_playing_on_target) = true;
+    - script.execute: clear_tts_playing_flag
     - homeassistant.action:
         action: script.voice_assistant_on_tts_end
         data:
