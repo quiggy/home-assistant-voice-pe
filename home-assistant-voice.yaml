@@ -167,6 +167,11 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
+  # Global variable tracking if the user said "stop" during STT
+  - id: stop_command_detected
+    type: bool
+    restore_value: no
+    initial_value: 'false'
   # Global variable tracking if the jack has been plugged touched.
   - id: jack_plugged_recently
     type: bool
@@ -1745,7 +1750,11 @@ micro_wake_word:
                     condition:
                       voice_assistant.is_running:
                     then:
-                      voice_assistant.stop:
+                      - homeassistant.action:
+                          action: script.voice_assistant_stop_target
+                          data:
+                            device_name: ${friendly_name}
+                      - voice_assistant.stop:
                     # Stop any other media player announcement
                     else:
                       - if:
@@ -1843,6 +1852,7 @@ voice_assistant:
         decibel_reduction: 20  # Number of dB quieter; higher implies more quiet, 0 implies full volume
         duration: 0.0s         # The duration of the transition (default is no transition)
   on_listening:
+    - lambda: id(stop_command_detected) = false;
     # Mute target player for better listening (only after wake word, not during idle streaming)
     - homeassistant.action:
         action: script.voice_assistant_target_mute
@@ -1862,7 +1872,7 @@ voice_assistant:
         data:
           device_name: ${friendly_name}
   on_stt_end:
-    # If the user said "stop" (or similar), abort the pipeline before intent processing
+    # If the user said "stop" (or similar), set flag to suppress TTS and abort
     - if:
         condition:
           lambda: |-
@@ -1870,6 +1880,11 @@ voice_assistant:
             for (auto &c : text) c = tolower(c);
             return text == "stop" || text == "stop." || text == "stopp" || text == "stopp.";
         then:
+          - lambda: id(stop_command_detected) = true;
+          - homeassistant.action:
+              action: script.voice_assistant_stop_target
+              data:
+                device_name: ${friendly_name}
           - voice_assistant.stop:
   on_intent_progress:
     - if:
@@ -1882,6 +1897,12 @@ voice_assistant:
           # Start a script that would potentially enable the stop word if the response is longer than a second
           - script.execute: activate_stop_word_once
   on_tts_start:
+    # If stop was requested, skip TTS entirely
+    - if:
+        condition:
+          lambda: return id(stop_command_detected);
+        then:
+          - voice_assistant.stop:
     # Kill internal speaker amp before TTS audio can start playing
     - switch.turn_off: internal_speaker_amp
     # Mute microphone so V:PE will not pick up parts of the target TTS as new command
@@ -1897,6 +1918,12 @@ voice_assistant:
           # Start a script that would potentially enable the stop word if the response is longer than a second
           - script.execute: activate_stop_word_once
   on_tts_end:
+    # If stop was requested, don't route TTS to any speaker
+    - if:
+        condition:
+          lambda: return id(stop_command_detected);
+        then:
+          - voice_assistant.stop:
     # Pass the TTS URL and device identity to Home Assistant script for routing
     # The script will determine which speaker to use based on the V:PE's name
     - homeassistant.action:
@@ -1906,6 +1933,7 @@ voice_assistant:
           device_name: ${friendly_name}
   # When the voice assistant ends ...
   on_end:
+    - lambda: id(stop_command_detected) = false;
     # Wait for the voice assistant to fully stop before cleanup
     - wait_until:
         not:
