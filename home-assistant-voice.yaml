@@ -1776,12 +1776,11 @@ micro_wake_word:
   microphone:
     microphone: i2s_mics
     channels: 1
-    gain_factor: 6
+    gain_factor: 4
   stop_after_detection: false
   models:
-    - model: models/hey_luna.json
-      id: hey_luna
-      sliding_window_size: 15
+    - model: models/hey_luna_v3.json
+      id: hey_luna_v3
     - model: models/stop.json
       id: stop
       internal: true
@@ -1881,14 +1880,15 @@ select:
       # Sets specific wake word probabilities computed for each particular model
       # Note probability cutoffs are set as a quantized uint8 value, each comment has the corresponding floating point cutoff
       # False Accepts per Hour values are tested against all units and channels from the Dinner Party Corpus.
-      # These cutoffs apply only to the specific models included in the firmware: hey_luna
+      # These cutoffs apply only to the specific models included in the firmware: hey_luna_v3
+      # Values taken from dreimer1986/home-assistant-voice-pe for hey_luna_v3.
       lambda: |-
         if (x == "Slightly sensitive") {
-          id(hey_luna).set_probability_cutoff(252);     // 0.988
+          id(hey_luna_v3).set_probability_cutoff(253);  // CUSTOM (dreimer)
         } else if (x == "Moderately sensitive") {
-          id(hey_luna).set_probability_cutoff(245);     // 0.96
+          id(hey_luna_v3).set_probability_cutoff(249);  // CUSTOM (dreimer)
         } else if (x == "Very sensitive") {
-          id(hey_luna).set_probability_cutoff(230);     // 0.90
+          id(hey_luna_v3).set_probability_cutoff(245);  // CUSTOM (dreimer)
         }
 
 voice_assistant:
