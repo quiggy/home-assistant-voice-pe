@@ -1746,6 +1746,10 @@ voice_kit:
 # Sendspin related components are pinned to specific commits for reproducible builds
 external_components:
   - source:
+      type: local
+      path: custom_components
+    components: [micro_wake_word]
+  - source:
       type: git
       url: https://github.com/esphome/home-assistant-voice-pe
       ref: dev
@@ -1779,117 +1783,17 @@ micro_wake_word:
     gain_factor: 4
   stop_after_detection: false
   models:
-    - model: models/hey_luna_v3.json
-      id: hey_luna_v3
-    - model: models/stop.json
-      id: stop
-      internal: true
-  vad:
-    model: models/vad.json
+    - model: models/bcresnet_smoke.json
+      id: bcresnet_smoke
   on_wake_word_detected:
-    # If the wake word is detected when the device is muted (Possible with the software mute switch): Do nothing
-    - if:
-        condition:
-          switch.is_off: master_mute_switch
-        then:
-          # If a timer is ringing: Stop it, do not start the voice assistant (We can stop timer from voice!)
-          - if:
-              condition:
-                switch.is_on: timer_ringing
-              then:
-                - switch.turn_off: timer_ringing
-              # Stop voice assistant if running
-              else:
-                - if:
-                    condition:
-                      voice_assistant.is_running:
-                    then:
-                      - homeassistant.action:
-                          action: script.voice_assistant_stop_target
-                          data:
-                            device_name: ${friendly_name}
-                      - voice_assistant.stop:
-                    else:
-                      # "stop" wake word: just stop the target speaker
-                      - if:
-                          condition:
-                            lambda: return wake_word == "stop";
-                          then:
-                            - if:
-                                condition:
-                                  lambda: return id(tts_playing_on_target);
-                                then:
-                                  - lambda: id(tts_playing_on_target) = false;
-                                  - homeassistant.action:
-                                      action: script.voice_assistant_stop_target
-                                      data:
-                                        device_name: ${friendly_name}
-                                else:
-                                  - if:
-                                      condition:
-                                        media_player.is_announcing:
-                                          id: external_media_player
-                                      then:
-                                        - media_player.stop:
-                                            announcement: true
-                                            id: external_media_player
-                          # "hey luna" wake word: stop target if playing, then start VA
-                          else:
-                            - if:
-                                condition:
-                                  lambda: return id(tts_playing_on_target);
-                                then:
-                                  - lambda: id(tts_playing_on_target) = false;
-                                  - homeassistant.action:
-                                      action: script.voice_assistant_stop_target
-                                      data:
-                                        device_name: ${friendly_name}
-                            - if:
-                                condition:
-                                  media_player.is_announcing:
-                                    id: external_media_player
-                                then:
-                                  - media_player.stop:
-                                      announcement: true
-                                      id: external_media_player
-                            - if:
-                                condition:
-                                  switch.is_on: wake_sound
-                                then:
-                                  - script.execute:
-                                      id: play_sound
-                                      priority: true
-                                      sound_file: "wake_word_triggered_sound"
-                                  - delay: 300ms
-                            - voice_assistant.start:
-                                wake_word: !lambda return wake_word;
+    - logger.log:
+        format: "BC-ResNet detected: %s"
+        args: ['wake_word.c_str()']
 
-select:
-  - platform: template
-    name: "Wake word sensitivity"
-    id: wake_word_sensitivity
-    optimistic: true
-    initial_option: Slightly sensitive
-    restore_value: true
-    entity_category: config
-    options:
-      - Slightly sensitive
-      - Moderately sensitive
-      - Very sensitive
-    on_value:
-      # Sets specific wake word probabilities computed for each particular model
-      # Note probability cutoffs are set as a quantized uint8 value, each comment has the corresponding floating point cutoff
-      # False Accepts per Hour values are tested against all units and channels from the Dinner Party Corpus.
-      # These cutoffs apply only to the specific models included in the firmware: hey_luna_v3
-      # Values taken from dreimer1986/home-assistant-voice-pe for hey_luna_v3.
-      lambda: |-
-        if (x == "Slightly sensitive") {
-          id(hey_luna_v3).set_probability_cutoff(253);  // CUSTOM (dreimer)
-        } else if (x == "Moderately sensitive") {
-          id(hey_luna_v3).set_probability_cutoff(249);  // CUSTOM (dreimer)
-        } else if (x == "Very sensitive") {
-          id(hey_luna_v3).set_probability_cutoff(245);  // CUSTOM (dreimer)
-        }
+# Smoke test: original on_wake_word_detected logic, VAD block, and the
+# "Wake word sensitivity" select (which referenced hey_luna_v3) were removed.
+# The voice_assistant block below is left untouched but will not trigger
+# because the new handler does not call voice_assistant.start.
 
 voice_assistant:
   id: va
