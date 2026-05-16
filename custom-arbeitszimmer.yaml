@@ -10,6 +10,7 @@ esphome:
   platformio_options:
     extra_scripts:
       - pre:../../../patch_esp_nn_fc.py
+      - pre:../../../patch_esp_nn_conv.py
 
 api:
   encryption:
