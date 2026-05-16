@@ -46,6 +46,10 @@ esphome:
       - script.execute: control_leds
       - delay: 1s
       - switch.turn_on: internal_speaker_amp
+      # Smoke test: previously had a micro_wake_word.start here, but after the
+      # esp-nn Conv crash was observed the on_boot trigger is removed so the
+      # device boots stable even if the new patch doesn't hold. Trigger MWW by
+      # toggling the 'Server wake word' switch in HA.
       # If after 10 minutes, the device is still initializing (It did not yet connect to Home Assistant), turn off the init_in_progress variable and run the script to refresh the LED status
       - delay: 10min
       - if:
