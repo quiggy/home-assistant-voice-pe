@@ -143,3 +143,4 @@ sdkconfig.*
 secrets.yaml
 .venv-*/
 bcresnet-smoke-firmware.factory.bin
+arbeitszimmer-pin-test-firmware.factory.bin
