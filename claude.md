@@ -15,9 +15,9 @@
 
 ## Build & Flash
 
-- **ESPHome**: 2026.3.3 via Docker (`ghcr.io/esphome/esphome:2026.3.3`)
-- **Compile**: `docker run --rm -v "$(pwd)":/config ghcr.io/esphome/esphome:2026.3.3 compile /config/custom-<device>.yaml`
-- **OTA flash**: `docker run --rm -v "$(pwd)":/config ghcr.io/esphome/esphome:2026.3.3 upload /config/custom-<device>.yaml --device <IP>`
+- **ESPHome**: 2026.4.5 via Docker (`ghcr.io/esphome/esphome:2026.4.5`)
+- **Compile**: `docker run --rm -v "$(pwd)":/config ghcr.io/esphome/esphome:2026.4.5 compile /config/custom-<device>.yaml`
+- **OTA flash**: `docker run --rm -v "$(pwd)":/config ghcr.io/esphome/esphome:2026.4.5 upload /config/custom-<device>.yaml --device <IP>`
 - **USB flash** (macOS, Docker can't pass USB): Compile in Docker, then flash with host esptool:
   ```
   python3 -m esptool --chip esp32s3 --port /dev/cu.usbmodem1101 write_flash 0x10000 .esphome/build/<name>/.pioenvs/<name>/firmware.bin
