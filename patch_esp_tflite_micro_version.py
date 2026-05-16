@@ -71,8 +71,28 @@ def patch_idf_component_yml(project_dir):
     return True
 
 
+def installed_version_matches(project_dir):
+    """Check if managed_components/<component>/idf_component.yml already declares TARGET_VERSION."""
+    comp_yml = os.path.join(
+        project_dir, "managed_components", "espressif__esp-tflite-micro", "idf_component.yml"
+    )
+    if not os.path.isfile(comp_yml):
+        return False
+    with open(comp_yml) as f:
+        content = f.read()
+    m = re.search(r"^version:\s*['\"]?([^'\"\s]+)['\"]?", content, re.MULTILINE)
+    return bool(m and m.group(1) == TARGET_VERSION)
+
+
 def invalidate_caches(project_dir):
-    """Force IDF Component Manager to re-resolve and re-download esp-tflite-micro."""
+    """Force IDF Component Manager to re-resolve and re-download esp-tflite-micro
+    ONLY if the currently downloaded copy is not already the target version.
+    Skipping the delete when the version already matches preserves any patches
+    written into managed_components (e.g. patch_esp_tflite_micro_cppstd)."""
+    if installed_version_matches(project_dir):
+        print(f"[pin-esp-tflite-micro] managed_components already at {TARGET_VERSION}, preserving")
+        return
+
     lock = os.path.join(project_dir, "dependencies.lock")
     if os.path.isfile(lock):
         os.remove(lock)

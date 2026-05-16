@@ -65,8 +65,25 @@ def patch_idf_component_yml(project_dir):
     return True
 
 
+def installed_version_matches(project_dir):
+    comp_yml = os.path.join(
+        project_dir, "managed_components", "espressif__esp-nn", "idf_component.yml"
+    )
+    if not os.path.isfile(comp_yml):
+        return False
+    with open(comp_yml) as f:
+        content = f.read()
+    m = re.search(r"^version:\s*['\"]?([^'\"\s]+)['\"]?", content, re.MULTILINE)
+    return bool(m and m.group(1) == TARGET_VERSION)
+
+
 def invalidate_caches(project_dir):
-    """Force IDF Component Manager to re-resolve and re-download esp-nn."""
+    """Force IDF Component Manager to re-resolve and re-download esp-nn ONLY if
+    the currently downloaded copy is not already the target version."""
+    if installed_version_matches(project_dir):
+        print(f"[pin-esp-nn] managed_components already at {TARGET_VERSION}, preserving")
+        return
+
     lock = os.path.join(project_dir, "dependencies.lock")
     if os.path.isfile(lock):
         os.remove(lock)

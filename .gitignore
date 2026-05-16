@@ -144,3 +144,6 @@ secrets.yaml
 .venv-*/
 bcresnet-smoke-firmware.factory.bin
 arbeitszimmer-pin-test-firmware.factory.bin
+bcresnet-no-patches-firmware.factory.bin
+bcresnet-recovery-firmware.factory.bin
+bcresnet-v134-recovery.factory.bin
