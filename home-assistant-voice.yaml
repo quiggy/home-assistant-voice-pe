@@ -271,8 +271,8 @@ switch:
     internal: true
     restore_mode: ALWAYS_OFF
     on_turn_off:
-      # Disable stop wake word
-      - micro_wake_word.disable_model: stop
+      # Smoke test: stop wake-word model not loaded
+      # - micro_wake_word.disable_model: stop
       - script.execute: disable_repeat
       # Stop any current announcement (ie: stop the timer ring mid playback)
       - if:
@@ -296,8 +296,8 @@ switch:
           id: media_mixing_input
           decibel_reduction: 20
           duration: 0.0s
-      # Enable stop wake word
-      - micro_wake_word.enable_model: stop
+      # Smoke test: stop wake-word model not loaded
+      # - micro_wake_word.enable_model: stop
       # Ring timer
       - script.execute: ring_timer
       # Refresh LED
@@ -1534,27 +1534,10 @@ script:
   #   This allows us to prevent having the deactivation of the stop word before its own activation.
   - id: activate_stop_word_once
     then:
-      - wait_until:
-          condition:
-            media_player.is_announcing:
-              id: external_media_player
-          timeout: 5s
-      - delay: 1s
-      # Enable stop wake word
-      - if:
-          condition:
-            switch.is_off: timer_ringing
-          then:
-            - micro_wake_word.enable_model: stop
-            - wait_until:
-                not:
-                  media_player.is_announcing:
-                    id: external_media_player
-            - if:
-                condition:
-                  switch.is_off: timer_ringing
-                then:
-                  - micro_wake_word.disable_model: stop
+      # Smoke test: stop wake-word model is not loaded, so the original
+      # enable/disable-during-TTS choreography is replaced by a no-op.
+      - lambda: |-
+          // intentionally empty for BC-ResNet smoke test
 
   # Clear the tts_playing_on_target flag after a timeout
   - id: clear_tts_playing_flag
