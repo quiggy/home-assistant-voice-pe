@@ -142,3 +142,4 @@ sdkconfig.*
 # Local customizations
 secrets.yaml
 .venv-*/
+arbeitszimmer-pin-test-firmware.factory.bin
