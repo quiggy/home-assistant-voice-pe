@@ -78,9 +78,15 @@ bool StreamingModel::load_model_() {
   }
 
   if (this->interpreter_ == nullptr) {
+    // Pass MicroProfiler when profile_ops is enabled via manifest. TFLite Micro
+    // then wraps every kernel Invoke with BeginEvent/EndEvent and we can print
+    // per-op timings after the first inference. Nullptr keeps the hot path
+    // zero-overhead otherwise.
+    tflite::MicroProfilerInterface *profiler = this->profile_ops_ ? &this->micro_profiler_ : nullptr;
     this->interpreter_ =
         make_unique<tflite::MicroInterpreter>(tflite::GetModel(this->model_start_), this->streaming_op_resolver_,
-                                              this->tensor_arena_, this->tensor_arena_size_, this->mrv_);
+                                              this->tensor_arena_, this->tensor_arena_size_, this->mrv_,
+                                              profiler);
     if (this->interpreter_->AllocateTensors() != kTfLiteOk) {
       ESP_LOGE(TAG, "Failed to allocate tensors for the streaming model");
       return false;
@@ -242,6 +248,17 @@ bool StreamingModel::perform_streaming_inference(const int8_t features[PREPROCES
       if (invoke_status != kTfLiteOk) {
         ESP_LOGW(TAG, "Streaming interpreter invoke failed");
         return false;
+      }
+      // After the first successful inference, dump per-op profiler data
+      // and stop further recording. GatedProfiler::log_and_stop emits both
+      // the per-tag aggregate (CSV) and the per-call timeline, then flips
+      // an internal flag so subsequent BeginEvent/EndEvent calls become
+      // no-ops. Without this gate the upstream MicroProfiler keeps filling
+      // a fixed 4096-entry buffer and aborts on overflow after ~2 seconds.
+      if (this->profile_ops_ && !this->profile_logged_) {
+        ESP_LOGI(TAG, "MWW_PROFILE first-inference per-op data follows:");
+        this->micro_profiler_.log_and_stop();
+        this->profile_logged_ = true;
       }
 
       TfLiteTensor *output = this->interpreter_->output(0);

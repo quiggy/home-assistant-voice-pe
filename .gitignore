@@ -147,3 +147,11 @@ arbeitszimmer-pin-test-firmware.factory.bin
 bcresnet-no-patches-firmware.factory.bin
 bcresnet-recovery-firmware.factory.bin
 bcresnet-v134-recovery.factory.bin
+bcresnet-no-conv-patch-v134.factory.bin
+bcresnet-conv-diag.factory.bin
+bcresnet-conv-diag-min.factory.bin
+bcresnet-stack8k.factory.bin
+bcresnet-profile.factory.bin
+bcresnet-profile-gated.factory.bin
+bcresnet-profile-self.factory.bin
+bcresnet-profile-printf.factory.bin

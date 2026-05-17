@@ -24,7 +24,13 @@ static const size_t DATA_TIMEOUT_MS = 50;
 
 static const uint32_t RING_BUFFER_DURATION_MS = 120;
 
-static const uint32_t INFERENCE_TASK_STACK_SIZE = 3072;
+// Bumped 3072 -> 8192. Stock 3 KB is fine for small models (hey_luna_v3,
+// VAD, stop) but esp_nn_conv_s8's SIMD path on a deeper model like
+// BC-ResNet overflows it. The stack-canary trap then overwrites the
+// crashing PC, and addr2line attributes the panic to conv.cc:291 (DCHECK),
+// which made the symptom look like an ESP-NN Conv bug. At 8 KB the same
+// path runs cleanly and the workaround patches become unnecessary.
+static const uint32_t INFERENCE_TASK_STACK_SIZE = 8192;
 static const UBaseType_t INFERENCE_TASK_PRIORITY = 3;
 
 enum EventGroupBits : uint32_t {

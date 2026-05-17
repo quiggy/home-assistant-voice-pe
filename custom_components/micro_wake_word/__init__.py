@@ -47,6 +47,7 @@ CONF_TENSOR_ARENA_SIZE = "tensor_arena_size"
 CONF_USE_INTERNAL_RAM = "use_internal_ram"
 CONF_PROBE_ARENA = "probe_arena"
 CONF_LOG_TIMING = "log_timing"
+CONF_PROFILE_OPS = "profile_ops"
 CONF_VAD = "vad"
 
 TYPE_HTTP = "http"
@@ -156,6 +157,7 @@ MANIFEST_SCHEMA_V2 = cv.Schema(
                 cv.Optional(CONF_USE_INTERNAL_RAM, default=False): cv.boolean,
                 cv.Optional(CONF_PROBE_ARENA, default=False): cv.boolean,
                 cv.Optional(CONF_LOG_TIMING, default=False): cv.boolean,
+                cv.Optional(CONF_PROFILE_OPS, default=False): cv.boolean,
                 cv.Required(KEY_MINIMUM_ESPHOME_VERSION): cv.All(
                     cv.version_number, cv.validate_esphome_version
                 ),
@@ -530,6 +532,11 @@ async def to_code(config):
             cg.add(
                 wake_word_model.set_log_timing(
                     manifest[KEY_MICRO].get(CONF_LOG_TIMING, False)
+                )
+            )
+            cg.add(
+                wake_word_model.set_profile_ops(
+                    manifest[KEY_MICRO].get(CONF_PROFILE_OPS, False)
                 )
             )
 

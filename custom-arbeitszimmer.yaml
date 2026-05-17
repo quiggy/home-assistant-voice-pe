@@ -9,16 +9,19 @@ esphome:
   friendly_name: ${friendly_name}
   platformio_options:
     extra_scripts:
-      # Phase 3.2 verdict (hardware-validated 2026-05-16):
-      #   FC patch   not needed under esp-tflite-micro 1.3.4 + esp-nn 1.2.3.
-      #   Conv patch still needed for BC-ResNet (esp_nn/conv.cc abort persists).
-      # v1.3.5 attempted but blocked: its new decode_state kernels use C++14
-      # syntax while the component's CMakeLists.txt pins -std=c++11; cmake
-      # caches that flag across patches in a way we couldn't override from
-      # our pre-script layer. See patch_esp_tflite_micro_cppstd.{py,cmake}
-      # for the dormant infrastructure.
+      # Phase 3.3 profile build — analyzing where the 16-17 ms inference
+      # latency on a 15k-MAC model really goes (op-dispatch overhead vs
+      # kernel time). Working baseline:
+      #   - stack 8 KB (INFERENCE_TASK_STACK_SIZE in our MWW component)
+      #   - Conv patch active (esp_nn Conv still aborts at conv.cc:291
+      #     even with the bumped stack — Phase 3.2 verdict)
+      #   - FC patch off (v1.3.4 upstream fix)
+      #   - profile_ops:true in bcresnet_smoke.json wires TFLite Micro's
+      #     MicroProfiler into the interpreter; first inference dumps
+      #     per-op-type + per-call timings.
       # - pre:../../../patch_esp_nn_fc.py
       - pre:../../../patch_esp_nn_conv.py
+      # - pre:../../../patch_esp_nn_conv_logging.py
       - pre:../../../patch_esp_tflite_micro_version.py
       - pre:../../../patch_esp_nn_version.py
 

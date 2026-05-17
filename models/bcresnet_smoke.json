@@ -14,6 +14,7 @@
     "tensor_arena_size": 200000,
     "probe_arena": true,
     "log_timing": true,
+    "profile_ops": true,
     "minimum_esphome_version": "2024.7.0"
   }
 }
