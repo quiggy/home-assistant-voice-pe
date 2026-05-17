@@ -155,3 +155,6 @@ bcresnet-profile.factory.bin
 bcresnet-profile-gated.factory.bin
 bcresnet-profile-self.factory.bin
 bcresnet-profile-printf.factory.bin
+bcresnet-sram.factory.bin
+bcresnet-sram2.factory.bin
+bcresnet-sram3.factory.bin

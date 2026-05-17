@@ -15,6 +15,7 @@
     "probe_arena": true,
     "log_timing": true,
     "profile_ops": true,
+    "use_internal_ram": false,
     "minimum_esphome_version": "2024.7.0"
   }
 }

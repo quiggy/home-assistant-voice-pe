@@ -5,6 +5,7 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
+#include <esp_heap_caps.h>
 #include <esp_timer.h>
 
 static const char *const TAG = "micro_wake_word";
@@ -29,7 +30,15 @@ void VADModel::log_model_config() {
 }
 
 bool StreamingModel::load_model_() {
-  RAMAllocator<uint8_t> arena_allocator;
+  // ESPHome's RAMAllocator default constructor tries PSRAM first and falls
+  // back to internal SRAM. When use_internal_ram_ is true (manifest flag)
+  // we force ALLOC_INTERNAL so the tensor arena lives in fast internal
+  // SRAM — relevant because BC-ResNet's ~16 ms inference is half PSRAM-
+  // bound bandwidth, not raw compute. Skipping the external attempt means
+  // failure if internal heap is too tight; the caller logs an error.
+  RAMAllocator<uint8_t> arena_allocator(
+      this->use_internal_ram_ ? RAMAllocator<uint8_t>::ALLOC_INTERNAL
+                              : RAMAllocator<uint8_t>::NONE);
 
   if (this->var_arena_ == nullptr) {
     this->var_arena_ = arena_allocator.allocate(STREAMING_MODEL_VARIABLE_ARENA_SIZE);
@@ -70,11 +79,29 @@ bool StreamingModel::load_model_() {
   }
 
   if (this->tensor_arena_ == nullptr) {
+    // Diagnostic: log free internal & external heap right before the
+    // tensor-arena allocation so failures are immediately interpretable.
+    size_t internal_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    size_t external_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    size_t internal_largest = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    size_t external_largest = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    ESP_LOGI(TAG,
+             "Pre-arena heap: internal free=%zu (largest contig=%zu)  PSRAM free=%zu (largest contig=%zu)  need=%zu bytes  use_internal_ram=%d",
+             internal_free, internal_largest, external_free, external_largest,
+             this->tensor_arena_size_, this->use_internal_ram_);
+
     this->tensor_arena_ = arena_allocator.allocate(this->tensor_arena_size_);
     if (this->tensor_arena_ == nullptr) {
       ESP_LOGE(TAG, "Could not allocate the streaming model's tensor arena.");
       return false;
     }
+    // On ESP32-S3 internal DRAM lives at 0x3FC00000-0x3FCFFFFF, external
+    // PSRAM at 0x3C000000-0x3DFFFFFF. Log which one we landed in so the
+    // use_internal_ram manifest flag is verifiable from the boot log.
+    uintptr_t addr = reinterpret_cast<uintptr_t>(this->tensor_arena_);
+    const char *where = (addr >= 0x3FC00000 && addr < 0x40000000) ? "internal SRAM" : "PSRAM";
+    ESP_LOGI(TAG, "Tensor arena at %p (%s) — %zu bytes, use_internal_ram=%d",
+             this->tensor_arena_, where, this->tensor_arena_size_, this->use_internal_ram_);
   }
 
   if (this->interpreter_ == nullptr) {
@@ -140,7 +167,11 @@ bool StreamingModel::load_model_() {
 }
 
 size_t StreamingModel::probe_arena_size_() {
-  RAMAllocator<uint8_t> arena_allocator;
+  // Probe with the same allocator flags load_model_() will use so the
+  // probed size reflects the actual deployment memory layout.
+  RAMAllocator<uint8_t> arena_allocator(
+      this->use_internal_ram_ ? RAMAllocator<uint8_t>::ALLOC_INTERNAL
+                              : RAMAllocator<uint8_t>::NONE);
 
   // Try manifest size first, then 1.5x, then 2x if it fails.
   size_t attempt_sizes[] = {(this->tensor_arena_size_ + 15) & ~15, (this->tensor_arena_size_ * 3 / 2 + 15) & ~15,
