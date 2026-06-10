@@ -6,7 +6,7 @@
 # first-ever build, so we rewrite here too — right before project() calls
 # the IDF Component Manager.
 
-set(_target_version "1.3.4")
+set(_target_version "1.3.7")
 set(_component_name "espressif/esp-tflite-micro")
 set(_yml_file "${CMAKE_SOURCE_DIR}/src/idf_component.yml")
 

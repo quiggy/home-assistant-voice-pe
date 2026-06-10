@@ -151,6 +151,7 @@ class StreamingModel {
   void set_probe_arena(bool v) { this->probe_arena_ = v; }
   void set_log_timing(bool v) { this->log_timing_ = v; }
   void set_profile_ops(bool v) { this->profile_ops_ = v; }
+  void set_refractory_period_ms(uint32_t ms) { this->refractory_period_ms_ = ms; }
 
  protected:
   /// @brief Allocates tensor and variable arenas and sets up the model interpreter
@@ -178,6 +179,9 @@ class StreamingModel {
   uint8_t default_probability_cutoff_;
   uint8_t probability_cutoff_;
   size_t sliding_window_size_;
+
+  uint32_t refractory_period_ms_{0};
+  uint32_t refractory_until_ms_{0};
 
   size_t last_n_index_{0};
   size_t tensor_arena_size_;

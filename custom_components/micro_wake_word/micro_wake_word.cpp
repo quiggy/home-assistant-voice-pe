@@ -311,8 +311,13 @@ void MicroWakeWord::loop() {
           return;
         }
 
-        xTaskCreate(MicroWakeWord::inference_task, "mww", INFERENCE_TASK_STACK_SIZE, (void *) this,
-                    INFERENCE_TASK_PRIORITY, &this->inference_task_handle_);
+        // Pin to PRO_CPU (core 0). ESPHome's loopTask runs pinned to APP_CPU (core 1).
+        // BC-ResNet inference (~16 ms, no yield points) on the same core starved
+        // loopTask hard enough to trip task_wdt after ~5 s. Giving mww its own core
+        // removes that contention; the comment above about FP-on-task-pinning still
+        // applies because we now choose the pin explicitly.
+        xTaskCreatePinnedToCore(MicroWakeWord::inference_task, "mww", INFERENCE_TASK_STACK_SIZE, (void *) this,
+                                INFERENCE_TASK_PRIORITY, &this->inference_task_handle_, 0);
 
         if (this->inference_task_handle_ == nullptr) {
           FrontendFreeStateContents(&this->frontend_state_);  // Deallocate frontend state

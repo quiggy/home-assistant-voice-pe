@@ -1,0 +1,50 @@
+# Drop-in package that streams the device microphones to a PC over UDP for
+# recording (e.g. capturing real device-mic audio for wake-word datasets).
+#
+# Usage: add to a custom-<device>.yaml under `packages:` AFTER the main package:
+#
+#   packages:
+#     home-assistant-voice: !include home-assistant-voice.yaml
+#     mic-capture: !include mic-capture.package.yaml
+#
+# Then set capture_host below to your PC's LAN IP, build/flash, and on the PC run:
+#   python3 tools/udp_audio_capture.py -o capture.wav -c 2
+# Toggle the "Mic Capture" switch in Home Assistant (or the device web UI) to
+# start/stop streaming.
+
+substitutions:
+  # <-- CHANGE THIS to the LAN IP of the PC running tools/udp_audio_capture.py
+  capture_host: "192.168.2.50"
+  capture_port: "6056"
+
+external_components:
+  - source:
+      type: local
+      path: custom_components
+    components: [mic_streamer]
+
+mic_streamer:
+  id: mic_capture
+  address: ${capture_host}
+  port: ${capture_port}
+  microphone:
+    microphone: i2s_mics
+    # [0, 1] = raw stereo (both mics). Use [1] to mirror exactly what
+    # micro_wake_word consumes (see the micro_wake_word: block in the main YAML).
+    channels: [0, 1]
+    bits_per_sample: 16
+    # 1 = no gain (avoids clipping for clean training data). micro_wake_word
+    # uses 4; raise this only if recordings are too quiet.
+    gain_factor: 1
+
+switch:
+  - platform: template
+    name: "Mic Capture"
+    id: mic_capture_switch
+    icon: "mdi:record-rec"
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    turn_on_action:
+      - mic_streamer.start: mic_capture
+    turn_off_action:
+      - mic_streamer.stop: mic_capture

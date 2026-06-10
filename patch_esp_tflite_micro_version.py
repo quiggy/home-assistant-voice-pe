@@ -28,7 +28,7 @@ import shutil
 
 Import("env")  # noqa: F821 — PlatformIO injects this
 
-TARGET_VERSION = "1.3.4"
+TARGET_VERSION = "1.3.7"
 COMPONENT_NAME = "espressif/esp-tflite-micro"
 CMAKE_SCRIPT = "patch_esp_tflite_micro_version.cmake"
 

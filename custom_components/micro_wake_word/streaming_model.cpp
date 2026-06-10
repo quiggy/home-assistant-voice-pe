@@ -2,6 +2,7 @@
 
 #ifdef USE_ESP32
 
+#include "esphome/core/hal.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
@@ -134,12 +135,26 @@ bool StreamingModel::load_model_() {
                outp->params.scale, outp->params.zero_point, outp->type);
     }
 
-    // Verify input tensor matches expected values
-    // Dimension 3 will represent the first layer stride, so skip it may vary
+    // Verify input tensor matches expected shape. Two layouts accepted:
+    //   3D: [1, stride, PREPROCESSOR_FEATURE_SIZE]
+    //   4D: [1, stride, PREPROCESSOR_FEATURE_SIZE, 1]  (Conv2D models export
+    //   a degenerate channel dim by default — RepCNN, BC-ResNet variants etc.)
+    // stride is read from data[1] regardless of size.
     TfLiteTensor *input = this->interpreter_->input(0);
-    if ((input->dims->size != 3) || (input->dims->data[0] != 1) ||
-        (input->dims->data[2] != PREPROCESSOR_FEATURE_SIZE)) {
-      ESP_LOGE(TAG, "Streaming model tensor input dimensions has improper dimensions.");
+    const bool dims_ok = (input->dims->data[0] == 1) &&
+                         (input->dims->data[2] == PREPROCESSOR_FEATURE_SIZE) &&
+                         ((input->dims->size == 3) ||
+                          (input->dims->size == 4 && input->dims->data[3] == 1));
+    if (!dims_ok) {
+      ESP_LOGE(TAG,
+               "Streaming model input has improper dimensions: size=%d "
+               "[%d,%d,%d,%d] — expected [1,stride,%d] or [1,stride,%d,1]",
+               input->dims->size,
+               input->dims->size > 0 ? input->dims->data[0] : -1,
+               input->dims->size > 1 ? input->dims->data[1] : -1,
+               input->dims->size > 2 ? input->dims->data[2] : -1,
+               input->dims->size > 3 ? input->dims->data[3] : -1,
+               PREPROCESSOR_FEATURE_SIZE, PREPROCESSOR_FEATURE_SIZE);
       return false;
     }
 
@@ -274,7 +289,7 @@ bool StreamingModel::perform_streaming_inference(const int8_t features[PREPROCES
       TfLiteStatus invoke_status = this->interpreter_->Invoke();
       if (this->log_timing_) {
         uint64_t dt = esp_timer_get_time() - t0;
-        ESP_LOGD(TAG, "MWW_TIMING: inference=%llu us", dt);
+        ESP_LOGI(TAG, "MWW_TIMING: inference=%llu us", dt);
       }
       if (invoke_status != kTfLiteOk) {
         ESP_LOGW(TAG, "Streaming interpreter invoke failed");
@@ -300,6 +315,21 @@ bool StreamingModel::perform_streaming_inference(const int8_t features[PREPROCES
         ESP_LOGD(TAG, "Inference out[0]=%u out[1]=%u (outputs=%u)",
                  output->data.uint8[0], out1->data.uint8[0],
                  this->interpreter_->outputs_size());
+      }
+
+      // Raw-output diagnostic — printf to bypass per-task log buffer drops.
+      // Emit a baseline sample once/sec (~30 invokes at stride=3) plus every
+      // frame whose probability >= 20 (≈ 8 %) to surface peaks without flooding.
+      {
+        static uint32_t inv_count = 0;
+        uint8_t raw = output->data.uint8[0];
+        bool periodic = (++inv_count % 30 == 0);
+        bool spike = (raw >= 5);
+        if (periodic || spike) {
+          printf("MWW_RAW: inv=%lu raw=%u/255 (%.2f%%)%s\n",
+                 (unsigned long) inv_count, (unsigned) raw,
+                 raw * 100.0f / 255.0f, spike ? " SPIKE" : "");
+        }
       }
 
       ++this->last_n_index_;
@@ -376,6 +406,13 @@ DetectionEvent WakeWordModel::determine_detected() {
     return detection_event;
   }
 
+  const uint32_t now_ms = millis();
+  if (this->refractory_period_ms_ > 0 && now_ms < this->refractory_until_ms_) {
+    detection_event.detected = false;
+    this->unprocessed_probability_status_ = false;
+    return detection_event;
+  }
+
   uint32_t sum = 0;
   for (auto &prob : this->recent_streaming_probabilities_) {
     detection_event.max_probability = std::max(detection_event.max_probability, prob);
@@ -384,6 +421,10 @@ DetectionEvent WakeWordModel::determine_detected() {
 
   detection_event.average_probability = sum / this->sliding_window_size_;
   detection_event.detected = sum > this->probability_cutoff_ * this->sliding_window_size_;
+
+  if (detection_event.detected && this->refractory_period_ms_ > 0) {
+    this->refractory_until_ms_ = now_ms + this->refractory_period_ms_;
+  }
 
   this->unprocessed_probability_status_ = false;
   return detection_event;

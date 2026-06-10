@@ -40,6 +40,8 @@ The wake word models (hey_luna, okay_nabu, stop) also use FullyConnected layers 
 
 This is related to [espressif/esp-tflite-micro#108](https://github.com/espressif/esp-tflite-micro/issues/108) — "ESP32-S3 with TFLite Int8 Quantized Model Returns Only Zeros", which identified that ESP-NN's FullyConnected kernel ignores per-channel quantization and always uses per-tensor `esp_nn_fully_connected_s8()`. However, the VAD bug persists even when per-channel fallback is added, indicating that `esp_nn_fully_connected_s8()` itself produces incorrect results for certain models.
 
+Independent reproduction and write-up of the same kernel bug on a different model: [wayinone/esp-tflite-example](https://github.com/wayinone/esp-tflite-example) — abort fires at `fully_connected.cc:165` on the `TFLITE_DCHECK_LE(output_depth, filter_shape.Dims(filter_dim_count - 2))` check inside the ESP-NN path. Same workaround: replace `#if ESP_NN` with `#if 0` to force the reference kernel. Confirms the bug is not VAD-specific — it's a general weakness of the ESP-NN FC path on certain quantized weight shapes.
+
 ### Fix in esp-tflite-micro v1.3.4
 
 The esp-tflite-micro v1.3.4 release (Sep 2025) includes "Use ESP-NN optimisations for FullyConnected Per-Channel operation" and reworked the FC ESP-NN integration. ESPHome 2026.3.3 ships v1.3.3.1 (Jan 2025) — one version too old.

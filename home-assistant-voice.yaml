@@ -107,7 +107,7 @@ network:
   enable_ipv6: true
 
 logger:
-  level: DEBUG
+  level: INFO
   logs:
     sensor: WARN  # avoids logging debug sensor updates
 

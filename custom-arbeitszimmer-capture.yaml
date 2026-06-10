@@ -1,0 +1,25 @@
+# Arbeitszimmer device with mic-capture enabled, for validation/recording runs.
+substitutions:
+  friendly_name: Voice PE Arbeitszimmer
+  # PC running tools/udp_audio_capture.py — Fedora PC.
+  capture_host: "192.168.2.161"
+
+packages:
+  home-assistant-voice: !include home-assistant-voice.yaml
+  mic-capture: !include mic-capture.package.yaml
+
+esphome:
+  name: ha-voice-099f06
+  friendly_name: ${friendly_name}
+  platformio_options:
+    extra_scripts:
+      - pre:../../../patch_esp_tflite_micro_version.py
+      - pre:../../../patch_esp_nn_version.py
+
+api:
+  encryption:
+    key: Qy0E0XoeaM+8hhsUFCunFYvDTTzuRcOvYc5ehQXFa/A=
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password

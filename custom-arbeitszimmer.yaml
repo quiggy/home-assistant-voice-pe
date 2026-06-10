@@ -20,10 +20,13 @@ esphome:
       #     MicroProfiler into the interpreter; first inference dumps
       #     per-op-type + per-call timings.
       # - pre:../../../patch_esp_nn_fc.py
-      - pre:../../../patch_esp_nn_conv.py
+      # - pre:../../../patch_esp_nn_conv.py  # OFF 2026-06-09 — testing esp_nn conv with reshaped model
       # - pre:../../../patch_esp_nn_conv_logging.py
       - pre:../../../patch_esp_tflite_micro_version.py
       - pre:../../../patch_esp_nn_version.py
+      # 1.3.7 re-introduces the C++14 decode_state* kernels + the contradictory
+      # -std=c++11/-std=gnu++14 CMakeLists line. Strip the dead c++11 token.
+      - pre:../../../patch_esp_tflite_micro_cppstd.py
 
 api:
   encryption:

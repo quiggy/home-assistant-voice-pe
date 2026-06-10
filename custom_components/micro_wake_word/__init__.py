@@ -40,6 +40,7 @@ CONF_FEATURE_STEP_SIZE = "feature_step_size"
 CONF_MODELS = "models"
 CONF_ON_WAKE_WORD_DETECTED = "on_wake_word_detected"
 CONF_PROBABILITY_CUTOFF = "probability_cutoff"
+CONF_REFRACTORY_PERIOD_MS = "refractory_period_ms"
 CONF_SLIDING_WINDOW_AVERAGE_SIZE = "sliding_window_average_size"
 CONF_SLIDING_WINDOW_SIZE = "sliding_window_size"
 CONF_STOP_AFTER_DETECTION = "stop_after_detection"
@@ -154,6 +155,7 @@ MANIFEST_SCHEMA_V2 = cv.Schema(
                 cv.Required(CONF_TENSOR_ARENA_SIZE): cv.int_,
                 cv.Required(CONF_PROBABILITY_CUTOFF): cv.float_,
                 cv.Required(CONF_SLIDING_WINDOW_SIZE): cv.positive_int,
+                cv.Optional(CONF_REFRACTORY_PERIOD_MS, default=0): cv.positive_int,
                 cv.Optional(CONF_USE_INTERNAL_RAM, default=False): cv.boolean,
                 cv.Optional(CONF_PROBE_ARENA, default=False): cv.boolean,
                 cv.Optional(CONF_LOG_TIMING, default=False): cv.boolean,
@@ -520,6 +522,10 @@ async def to_code(config):
                 model_parameters[CONF_INTERNAL],
                 use_internal_ram,
             )
+
+            refractory_period_ms = manifest[KEY_MICRO].get(CONF_REFRACTORY_PERIOD_MS, 0)
+            if refractory_period_ms:
+                cg.add(wake_word_model.set_refractory_period_ms(int(refractory_period_ms)))
 
             for lang in manifest[KEY_TRAINED_LANGUAGES]:
                 cg.add(wake_word_model.add_trained_language(lang))

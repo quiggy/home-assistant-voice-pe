@@ -158,3 +158,6 @@ bcresnet-profile-printf.factory.bin
 bcresnet-sram.factory.bin
 bcresnet-sram2.factory.bin
 bcresnet-sram3.factory.bin
+
+# Root-level factory build artifacts (regenerable)
+firmware.factory*.bin

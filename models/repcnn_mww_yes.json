@@ -1,0 +1,19 @@
+{
+  "type": "micro",
+  "wake_word": "RepCNN-MWW Yes (Phase 2.5)",
+  "author": "Christian + Claude (Phase 2.5 pipeline validation, repcnn-experiment branch)",
+  "model": "repcnn_mww_yes.tflite",
+  "trained_languages": ["en"],
+  "version": 2,
+  "micro": {
+    "probability_cutoff": 0.5,
+    "sliding_window_size": 5,
+    "feature_step_size": 10,
+    "tensor_arena_size": 262144,
+    "probe_arena": true,
+    "log_timing": true,
+    "profile_ops": true,
+    "use_internal_ram": false,
+    "minimum_esphome_version": "2024.7.0"
+  }
+}
